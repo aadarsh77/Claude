@@ -1,11 +1,13 @@
 /* Offline shell for કાર્ય મેટ્રિક્સ.
    Bump CACHE whenever any precached file changes, or phones keep the old copy. */
-var CACHE = "karya-matrix-v1";
+var CACHE = "karya-matrix-v2";
 var ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
+  "./config.js",
+  "./sync.js",
   "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png",

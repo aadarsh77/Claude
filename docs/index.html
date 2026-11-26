@@ -42,12 +42,34 @@
   <button class="row" data-m="copy">આજની યાદી કોપી કરો</button>
   <button class="row" data-m="export">બૅકઅપ ફાઇલ ઉતારો (.json)</button>
   <button class="row" data-m="import">બૅકઅપ ફાઇલ ચઢાવો</button>
+  <button class="row" data-m="sync">સિંક અને લૉગિન</button>
   <button class="row" data-m="learn">એપ શું શીખી છે</button>
   <button class="row danger" data-m="clearDone">પૂર્ણ થયેલાં બધાં કાઢી નાખો</button>
   <input type="file" id="importfile" accept="application/json,.json" hidden>
 </div>
 
+<div class="sheet" id="syncsheet" hidden>
+  <p class="syncstate" id="syncstate">—</p>
+  <p class="syncoff" id="syncoff" hidden>
+    સિંક ચાલુ કરવા <code>config.js</code> માં Supabase નું URL અને anon key ભરવાં પડે,
+    અને <code>schema.sql</code> એક વાર ચલાવવી પડે. જુઓ <code>README.md</code>.
+  </p>
+  <div id="signinbox" hidden>
+    <input type="email" id="otpemail" inputmode="email" autocomplete="email" placeholder="તમારું ઈ-મેલ" aria-label="ઈ-મેલ">
+    <button class="row" id="otpsend">કોડ મોકલો</button>
+    <div id="otpstep2" hidden>
+      <input type="text" id="otpcode" inputmode="numeric" autocomplete="one-time-code" placeholder="ઈ-મેલમાં આવેલો ૬-અંકનો કોડ" aria-label="કોડ">
+      <button class="row" id="otpverify">ચકાસો અને લૉગિન કરો</button>
+    </div>
+  </div>
+  <div id="signoutbox" hidden>
+    <button class="row" id="syncnow">અત્યારે સિંક કરો</button>
+    <button class="row danger" id="signoutbtn">લૉગ આઉટ</button>
+  </div>
+</div>
+
 <main class="wrap">
+  <p class="syncline" id="syncline" hidden></p>
 
   <section class="compose">
     <div class="cline">
@@ -86,6 +108,8 @@
   </p>
 </main>
 
+<script src="./config.js"></script>
 <script src="./app.js"></script>
+<script src="./sync.js"></script>
 </body>
 </html>

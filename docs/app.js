@@ -62,9 +62,15 @@
   var TIME_RE = /(^|\s)([01]?\d|2[0-3])[:.][0-5]\d\s*(am|pm)?|\b\d{1,2}\s*(am|pm)\b/i;
 
   var K_TASKS = "kmx.tasks.v1", K_LEX = "kmx.lex.v1", K_TPL = "kmx.tpl.v1",
-      K_THEME = "kmx.theme.v1", K_SEEDED = "kmx.seeded.v1";
+      K_THEME = "kmx.theme.v1", K_SEEDED = "kmx.seeded.v1", K_LEXMETA = "kmx.lexmeta.v1";
 
-  var S = { tasks:{}, lex:{}, templates:[], filter:"open", view:"matrix" };
+  var S = { tasks:{}, lex:{}, templates:[], filter:"open", view:"matrix",
+            lexUpdated:"", lexDirty:false };
+
+  // A deleted task is kept as a tombstone for TOMBSTONE_DAYS so the deletion
+  // reaches the other devices; a row that merely vanished here would be pulled
+  // straight back from the server.
+  var TOMBSTONE_DAYS = 60;
   var deferredPrompt = null;
 
   function $(id) { return document.getElementById(id); }
@@ -81,8 +87,24 @@
       if (!warnedStorage) { warnedStorage = true; toast("સેવ થઈ શક્યું નહીં — ફોનની સ્ટોરેજ ભરાઈ છે કે બ્લૉક છે."); }
     }
   }
-  function saveTasks() { write(K_TASKS, S.tasks); }
-  function saveLex() { write(K_LEX, S.lex); }
+  function notify() {
+    if (window.KMX && typeof window.KMX.onChange === "function") window.KMX.onChange();
+  }
+  function saveTasks() { write(K_TASKS, S.tasks); notify(); }
+  function saveLex(markDirty) {
+    write(K_LEX, S.lex);
+    if (markDirty !== false) {
+      S.lexDirty = true;
+      S.lexUpdated = new Date().toISOString();
+    }
+    write(K_LEXMETA, { updated:S.lexUpdated, dirty:S.lexDirty });
+    notify();
+  }
+  // Stamp a task as changed here and not yet sent anywhere.
+  function touch(t) {
+    t.updated = new Date().toISOString();
+    t.dirty = true;
+  }
 
   /* ---------------- helpers ---------------- */
   function esc(s) {
@@ -261,7 +283,7 @@
     var today = todayStr(), out = [];
     Object.keys(S.tasks).forEach(function (id) {
       var t = S.tasks[id];
-      if (!t || !t.text) return;
+      if (!t || !t.text || t.deleted) return;
       if (S.filter === "open" && t.done) return;
       if (S.filter === "done" && !t.done) return;
       if (S.filter === "today") {
@@ -316,6 +338,7 @@
     var openCount = 0, doneToday = 0;
     Object.keys(S.tasks).forEach(function (id) {
       var t = S.tasks[id];
+      if (t.deleted) return;
       if (!t.done) openCount++;
       else if (t.doneAt && String(t.doneAt).slice(0, 10) === today) doneToday++;
     });
@@ -425,7 +448,8 @@
       due: $("ddate").value || null,
       created: new Date().toISOString(),
       done: false, doneAt: null,
-      fixU: null, fixI: null, trainedU: null, trainedI: null
+      fixU: null, fixI: null, trainedU: null, trainedI: null,
+      deleted: false, updated: new Date().toISOString(), dirty: true
     };
     S.tasks[t.id] = t;
     saveTasks();
@@ -448,19 +472,19 @@
     if (act === "done") {
       t.done = !t.done;
       t.doneAt = t.done ? new Date().toISOString() : null;
-      saveTasks(); render();
+      touch(t); saveTasks(); render();
       return;
     }
     if (act === "del") {
-      delete S.tasks[t.id];
-      saveTasks(); render(); toast("કાઢી નાખ્યું");
+      t.deleted = true;
+      touch(t); saveTasks(); render(); toast("કાઢી નાખ્યું");
       return;
     }
     var c = classify(t, today);
     if (act === "imp") t.fixI = !c.important;
     if (act === "urg") t.fixU = !c.urgent;
     train(t);
-    saveTasks(); render();
+    touch(t); saveTasks(); render();
     toast("શીખી લીધું → " + QBY[classify(t, today).quad].gu);
   }
 
@@ -480,20 +504,27 @@
     return lines.join("\n");
   }
 
-  function closeMenu() {
+  function closeSheets() {
     $("menu").hidden = true;
+    var ss = $("syncsheet");
+    if (ss) ss.hidden = true;
     $("menubtn").setAttribute("aria-expanded", "false");
     var sc = document.querySelector(".scrim");
     if (sc) sc.remove();
   }
-  function openMenu() {
-    $("menu").hidden = false;
-    $("menubtn").setAttribute("aria-expanded", "true");
+  var closeMenu = closeSheets;
+  function openSheet(id) {
+    closeSheets();
+    var el = $(id);
+    if (!el) return;
+    el.hidden = false;
+    if (id === "menu") $("menubtn").setAttribute("aria-expanded", "true");
     var sc = document.createElement("div");
     sc.className = "scrim";
-    sc.addEventListener("click", closeMenu);
+    sc.addEventListener("click", closeSheets);
     document.body.appendChild(sc);
   }
+  function openMenu() { openSheet("menu"); }
 
   function doExport() {
     var payload = { app:"karya-matrix", version:1, exported:new Date().toISOString(), tasks:S.tasks, lexicon:S.lex, templates:S.templates };
@@ -520,8 +551,10 @@
       Object.keys(data.tasks).forEach(function (id) {
         var t = data.tasks[id];
         if (!t || !t.text) return;
-        if (!S.tasks[id]) added++;
+        if (!S.tasks[id] && !t.deleted) added++;
         t.id = id;
+        if (!t.updated) t.updated = t.created || new Date().toISOString();
+        t.dirty = true;
         S.tasks[id] = t;
       });
       if (data.lexicon && typeof data.lexicon === "object") {
@@ -540,7 +573,10 @@
 
   function clearDone() {
     var n = 0;
-    Object.keys(S.tasks).forEach(function (id) { if (S.tasks[id].done) { delete S.tasks[id]; n++; } });
+    Object.keys(S.tasks).forEach(function (id) {
+      var t = S.tasks[id];
+      if (t.done && !t.deleted) { t.deleted = true; touch(t); n++; }
+    });
     saveTasks(); render();
     toast(n + " પૂર્ણ ટાસ્ક કાઢ્યાં");
   }
@@ -604,6 +640,7 @@
     }
     else if (m === "export") doExport();
     else if (m === "import") $("importfile").click();
+    else if (m === "sync") { openSheet("syncsheet"); }
     else if (m === "learn") { $("learn").open = true; $("learn").scrollIntoView({ behavior:"smooth", block:"start" }); }
     else if (m === "clearDone") clearDone();
   });
@@ -653,7 +690,7 @@
     var t = S.tasks[dragId], target = QBY[q.getAttribute("data-quad")];
     if (t && target) {
       t.fixU = target.u; t.fixI = target.i;
-      train(t); saveTasks(); render();
+      train(t); touch(t); saveTasks(); render();
       toast("ખસેડ્યું → " + target.gu);
     }
     dragId = null;
@@ -704,6 +741,18 @@
   S.tasks = read(K_TASKS, {}) || {};
   S.lex = read(K_LEX, null);
   S.templates = read(K_TPL, null);
+  var lexMeta = read(K_LEXMETA, null) || {};
+  S.lexUpdated = lexMeta.updated || "";
+  S.lexDirty = !!lexMeta.dirty;
+
+  (function purgeTombstones() {
+    var cutoff = new Date(Date.now() - TOMBSTONE_DAYS * 86400000).toISOString(), n = 0;
+    Object.keys(S.tasks).forEach(function (id) {
+      var t = S.tasks[id];
+      if (t && t.deleted && !t.dirty && (t.updated || "") < cutoff) { delete S.tasks[id]; n++; }
+    });
+    if (n) write(K_TASKS, S.tasks);
+  })();
 
   if (!S.lex || !read(K_SEEDED, false)) {
     if (!S.lex) { S.lex = JSON.parse(JSON.stringify(SEED_LEX)); saveLex(); }
@@ -711,6 +760,42 @@
     write(K_SEEDED, true);
   }
   if (!S.templates) S.templates = SEED_TEMPLATES.slice();
+
+  // Bridge for sync.js, which is loaded after this file and may not be there.
+  window.KMX = {
+    S: S,
+    saveTasks: saveTasks,
+    render: render,
+    toast: toast,
+    closeSheets: closeSheets,
+    lexUpdated: function () { return S.lexUpdated; },
+    lexDirty: function () { return !!S.lexDirty; },
+    setLex: function (tokens, at) {
+      S.lex = tokens || {};
+      S.lexUpdated = at || new Date().toISOString();
+      S.lexDirty = false;
+      write(K_LEX, S.lex);
+      write(K_LEXMETA, { updated:S.lexUpdated, dirty:false });
+      render();
+    },
+    lexSynced: function (at) {
+      S.lexUpdated = at;
+      S.lexDirty = false;
+      write(K_LEXMETA, { updated:at, dirty:false });
+    },
+    markAllDirty: function () {
+      Object.keys(S.tasks).forEach(function (id) {
+        var t = S.tasks[id];
+        t.dirty = true;
+        if (!t.updated) t.updated = t.created || new Date().toISOString();
+      });
+      S.lexDirty = true;
+      if (!S.lexUpdated) S.lexUpdated = new Date().toISOString();
+      write(K_TASKS, S.tasks);
+      write(K_LEXMETA, { updated:S.lexUpdated, dirty:true });
+    },
+    onChange: null
+  };
 
   renderTemplates();
   render();
