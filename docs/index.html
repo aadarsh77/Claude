@@ -42,6 +42,9 @@
   <button class="row" data-m="copy">આજની યાદી કોપી કરો</button>
   <button class="row" data-m="export">બૅકઅપ ફાઇલ ઉતારો (.json)</button>
   <button class="row" data-m="import">બૅકઅપ ફાઇલ ચઢાવો</button>
+  <button class="row toggle" data-m="manual" aria-pressed="false">
+    <span>મહત્ત્વ હું જ નક્કી કરું</span><span class="state" id="manualstate">બંધ</span>
+  </button>
   <button class="row" data-m="sync">સિંક અને લૉગિન</button>
   <button class="row" data-m="learn">એપ શું શીખી છે</button>
   <button class="row danger" data-m="clearDone">પૂર્ણ થયેલાં બધાં કાઢી નાખો</button>
@@ -102,6 +105,11 @@
     <summary>એપ શું શીખી છે <span id="lcount"></span></summary>
     <div class="learnbody">
       <p>કાર્ડ પરનું <b>Imp</b> કે <b>Urg</b> બટન દબાવો એટલે એ ટાસ્કના શબ્દો અહીં નોંધાય. ખોટું શીખ્યું હોય તો શબ્દ પરના × થી ભુલાવી દો.</p>
+      <p class="learnoff" id="learnoff" hidden>
+        <b>અત્યારે આ શબ્દો વપરાતા નથી</b> — "મહત્ત્વ હું જ નક્કી કરું" ચાલુ છે, એટલે મહત્ત્વ ફક્ત
+        તમારી પસંદગીથી અને તાકીદ ફક્ત તારીખ તથા લખાણમાંના સમય-શબ્દથી નક્કી થાય છે.
+        નોંધ થતી રહે છે, જેથી સ્વિચ બંધ કરો ત્યારે શીખ તૈયાર હોય.
+      </p>
       <div class="words" id="words"></div>
     </div>
   </details>

@@ -63,10 +63,15 @@
 
   var K_TASKS = "kmx.tasks.v1", K_LEX = "kmx.lex.v1", K_TPL = "kmx.tpl.v1",
       K_THEME = "kmx.theme.v1", K_SEEDED = "kmx.seeded.v1", K_LEXMETA = "kmx.lexmeta.v1",
-      K_BACKUP = "kmx.lastbackup.v1", K_SNOOZE = "kmx.backupsnooze.v1";
+      K_BACKUP = "kmx.lastbackup.v1", K_SNOOZE = "kmx.backupsnooze.v1",
+      K_MANUAL = "kmx.manualimp.v1";
 
   var S = { tasks:{}, lex:{}, templates:[], filter:"open", view:"matrix",
-            lexUpdated:"", lexDirty:false };
+            lexUpdated:"", lexDirty:false,
+            // manual: stop guessing importance from words altogether. Urgency
+            // still comes from dates and from time words written in the task
+            // itself, which are read, not inferred.
+            manual:false };
 
   // A deleted task is kept as a tombstone for TOMBSTONE_DAYS so the deletion
   // reaches the other devices; a row that merely vanished here would be pulled
@@ -215,6 +220,9 @@
     if (task.fixI === true || task.fixI === false) {
       important = task.fixI;
       iWhy = "મહત્ત્વ: તમે જાતે નક્કી કર્યું";
+    } else if (S.manual) {
+      important = true;
+      iWhy = "મહત્ત્વ: અનુમાન બંધ — ડિફૉલ્ટ ઇમ્પોર્ટન્ટ, જાતે બદલો";
     } else if (I.hits.length) {
       important = I.s > 0;
       iWhy = "મહત્ત્વ: શીખેલા શબ્દો — " + I.hits.map(function (h) { return h[0]; }).join(", ");
@@ -234,6 +242,9 @@
       } else if (d !== null && d >= 4) {
         urgent = false;
         uWhy = "તાકીદ: હજી " + d + " દિવસ બાકી";
+      } else if (S.manual) {
+        urgent = false;
+        uWhy = "તાકીદ: " + d + " દિવસ બાકી";
       } else {
         urgent = U.hits.length ? U.s > 0 : false;
         uWhy = "તાકીદ: " + d + " દિવસ બાકી" + (U.hits.length ? " + શબ્દો " + U.hits.map(function (h) { return h[0]; }).join(", ") : "");
@@ -241,12 +252,12 @@
     } else if (URGENT_WORDS.test(task.text) || TIME_RE.test(task.text)) {
       urgent = true;
       uWhy = "તાકીદ: લખાણમાં સમય કે તાકીદનો શબ્દ છે";
-    } else if (U.hits.length) {
+    } else if (!S.manual && U.hits.length) {
       urgent = U.s > 0;
       uWhy = "તાકીદ: શીખેલા શબ્દો — " + U.hits.map(function (h) { return h[0]; }).join(", ");
     } else {
       urgent = false;
-      uWhy = "તાકીદ: તારીખ નથી — ડિફૉલ્ટ તાકીદ નહીં";
+      uWhy = S.manual ? "તાકીદ: તારીખ નથી — તાકીદ નહીં" : "તાકીદ: તારીખ નથી — ડિફૉલ્ટ તાકીદ નહીં";
     }
 
     return {
@@ -405,7 +416,9 @@
       var ea = S.lex[a], eb = S.lex[b];
       return (eb.i + eb.ni + eb.u + eb.nu) - (ea.i + ea.ni + ea.u + ea.nu);
     });
-    $("lcount").textContent = "(" + keys.length + " શબ્દ)";
+    $("lcount").textContent = "(" + keys.length + " શબ્દ)" + (S.manual ? " — અત્યારે વપરાતા નથી" : "");
+    var off = $("learnoff");
+    if (off) off.hidden = !S.manual;
     $("words").innerHTML = keys.slice(0, 80).map(function (k) {
       var e = S.lex[k], lean = [];
       if (e.i !== e.ni) lean.push(e.i > e.ni ? "Imp" : "Not imp");
@@ -423,6 +436,13 @@
     box.innerHTML = S.templates.map(function (txt, i) {
       return '<button class="chip" data-tpl="' + i + '">' + esc(txt) + "</button>";
     }).join("");
+  }
+
+  function renderManualRow() {
+    var el = $("manualstate");
+    if (el) el.textContent = S.manual ? "ચાલુ" : "બંધ";
+    var row = document.querySelector('[data-m="manual"]');
+    if (row) row.setAttribute("aria-pressed", S.manual ? "true" : "false");
   }
 
   var toastTimer = null;
@@ -703,6 +723,15 @@
     }
     else if (m === "export") doExport();
     else if (m === "import") $("importfile").click();
+    else if (m === "manual") {
+      S.manual = !S.manual;
+      write(K_MANUAL, S.manual);
+      renderManualRow();
+      render();
+      updatePredict();
+      toast(S.manual ? "મહત્ત્વનું અનુમાન બંધ — હવે તમે જ નક્કી કરશો"
+                     : "મહત્ત્વનું અનુમાન ચાલુ");
+    }
     else if (m === "sync") { openSheet("syncsheet"); }
     else if (m === "learn") { $("learn").open = true; $("learn").scrollIntoView({ behavior:"smooth", block:"start" }); }
     else if (m === "clearDone") clearDone();
@@ -845,6 +874,7 @@
   S.tasks = read(K_TASKS, {}) || {};
   S.lex = read(K_LEX, null);
   S.templates = read(K_TPL, null);
+  S.manual = !!read(K_MANUAL, false);
   var lexMeta = read(K_LEXMETA, null) || {};
   S.lexUpdated = lexMeta.updated || "";
   S.lexDirty = !!lexMeta.dirty;
@@ -914,6 +944,7 @@
     onChange: null
   };
 
+  renderManualRow();
   renderTemplates();
   render();
   updatePredict();

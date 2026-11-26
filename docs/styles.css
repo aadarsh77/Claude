@@ -306,3 +306,15 @@ input{font:inherit;color:inherit}
 .pickauto{border-style:dashed;color:var(--ink-faint)}
 .mini.pinned{min-width:54px}
 .mini.pinned::before{content:"\2713";margin-inline-end:3px;font-weight:700}
+
+/* ---------- toggle row in the menu sheet ---------- */
+.sheet .row.toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:right}
+.sheet .row.toggle .state{
+  flex:none;font-size:.76rem;font-weight:600;border-radius:999px;padding:3px 11px;
+  background:var(--drop-bg);color:var(--ink-faint);
+}
+.sheet .row.toggle[aria-pressed="true"] .state{background:var(--accent);color:#fff}
+.learnoff{
+  margin:10px 0 0;font-size:.79rem;line-height:1.6;color:var(--ink-soft);
+  background:var(--deleg-bg);border:1px solid var(--deleg);border-radius:10px;padding:9px 11px;
+}
