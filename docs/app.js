@@ -62,7 +62,8 @@
   var TIME_RE = /(^|\s)([01]?\d|2[0-3])[:.][0-5]\d\s*(am|pm)?|\b\d{1,2}\s*(am|pm)\b/i;
 
   var K_TASKS = "kmx.tasks.v1", K_LEX = "kmx.lex.v1", K_TPL = "kmx.tpl.v1",
-      K_THEME = "kmx.theme.v1", K_SEEDED = "kmx.seeded.v1", K_LEXMETA = "kmx.lexmeta.v1";
+      K_THEME = "kmx.theme.v1", K_SEEDED = "kmx.seeded.v1", K_LEXMETA = "kmx.lexmeta.v1",
+      K_BACKUP = "kmx.lastbackup.v1", K_SNOOZE = "kmx.backupsnooze.v1";
 
   var S = { tasks:{}, lex:{}, templates:[], filter:"open", view:"matrix",
             lexUpdated:"", lexDirty:false };
@@ -71,6 +72,18 @@
   // reaches the other devices; a row that merely vanished here would be pulled
   // straight back from the server.
   var TOMBSTONE_DAYS = 60;
+
+  // Housekeeping. localStorage gives a site about 5 MB and one task costs
+  // roughly 560 bytes, so an unpruned list fills up in about two and a half
+  // years at ten tasks a day. Dropping finished work older than a year keeps
+  // it flat for good. This is local forgetting, not a delete: no tombstone is
+  // written, so other devices keep their own copy and nothing is removed from
+  // the server.
+  var KEEP_DONE_DAYS = 365;
+  var BACKUP_REMIND_DAYS = 30;   // nag only when there is no sync to fall back on
+  var BACKUP_SNOOZE_DAYS = 7;
+  var MIN_TASKS_FOR_TIP = 5;
+  var DAY = 86400000;
   var deferredPrompt = null;
 
   function $(id) { return document.getElementById(id); }
@@ -537,6 +550,9 @@
     a.click();
     a.remove();
     setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+    write(K_BACKUP, new Date().toISOString());
+    var bar = document.querySelector(".tipbar.backup");
+    if (bar) bar.remove();
     toast("બૅકઅપ ફાઇલ બની");
   }
 
@@ -716,6 +732,47 @@
     toast("ઇન્સ્ટૉલ થઈ ગયું");
   });
 
+  /* The only copy of the data is this browser, so remind the owner to take a
+     file out of it. Skipped entirely when sync is on: the server is the backup. */
+  var backupTipDone = false;
+  function backupTip(syncActive) {
+    if (backupTipDone) return;
+    backupTipDone = true;
+    if (syncActive) return;
+
+    var live = 0;
+    Object.keys(S.tasks).forEach(function (id) {
+      var t = S.tasks[id];
+      if (t && !t.deleted) live++;
+    });
+    if (live < MIN_TASKS_FOR_TIP) return;
+
+    var last = read(K_BACKUP, "");
+    var snooze = read(K_SNOOZE, "");
+    var now = Date.now();
+    if (snooze && now - new Date(snooze).getTime() < BACKUP_SNOOZE_DAYS * DAY) return;
+    if (last && now - new Date(last).getTime() < BACKUP_REMIND_DAYS * DAY) return;
+
+    var days = last ? Math.floor((now - new Date(last).getTime()) / DAY) : 0;
+    var msg = last
+      ? days + " દિવસથી બૅકઅપ લીધું નથી. ફોન ખોવાય કે રીસેટ થાય તો આ " + live + " ટાસ્ક જતાં રહેશે."
+      : "બૅકઅપ એક પણ વાર લીધું નથી. આ " + live + " ટાસ્કની નકલ ફક્ત આ ફોનમાં છે.";
+
+    var el = document.createElement("div");
+    el.className = "tipbar backup";
+    el.innerHTML = '<span></span>' +
+      '<button type="button" class="act">અત્યારે ઉતારો</button>' +
+      '<button type="button" class="dismiss" aria-label="પછી">\u00d7</button>';
+    el.querySelector("span").textContent = msg;
+    el.querySelector(".act").addEventListener("click", doExport);
+    el.querySelector(".dismiss").addEventListener("click", function () {
+      write(K_SNOOZE, new Date().toISOString());
+      el.remove();
+    });
+    var wrap = document.querySelector(".wrap");
+    wrap.insertBefore(el, wrap.firstChild);
+  }
+
   /* iPhone has no install prompt event: Safari installs only through Share → Add to Home Screen. */
   function maybeIosTip() {
     var isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -723,7 +780,7 @@
       (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
     if (!isIos || standalone || read("kmx.iostip.dismissed", false)) return;
     var el = document.createElement("div");
-    el.className = "iostip";
+    el.className = "tipbar iostip";
     el.innerHTML = '<span>ફોનમાં ઇન્સ્ટૉલ કરવા: નીચે <b>Share</b> (↑) દબાવો, પછી <b>Add to Home Screen</b>.</span>' +
                    '<button type="button" aria-label="બંધ કરો">\u00d7</button>';
     el.querySelector("button").addEventListener("click", function () {
@@ -745,13 +802,25 @@
   S.lexUpdated = lexMeta.updated || "";
   S.lexDirty = !!lexMeta.dirty;
 
-  (function purgeTombstones() {
-    var cutoff = new Date(Date.now() - TOMBSTONE_DAYS * 86400000).toISOString(), n = 0;
+  var purgedCount = (function housekeep() {
+    var tombCut = new Date(Date.now() - TOMBSTONE_DAYS * DAY).toISOString();
+    var doneCut = new Date(Date.now() - KEEP_DONE_DAYS * DAY).toISOString();
+    var tombs = 0, old = 0;
     Object.keys(S.tasks).forEach(function (id) {
       var t = S.tasks[id];
-      if (t && t.deleted && !t.dirty && (t.updated || "") < cutoff) { delete S.tasks[id]; n++; }
+      if (!t) return;
+      // Never drop a row that has not reached the server yet.
+      if (t.dirty) return;
+      if (t.deleted) {
+        if ((t.updated || "") < tombCut) { delete S.tasks[id]; tombs++; }
+        return;
+      }
+      if (!t.done) return;
+      var when = t.doneAt || t.updated || t.created || "";
+      if (when && when < doneCut) { delete S.tasks[id]; old++; }
     });
-    if (n) write(K_TASKS, S.tasks);
+    if (tombs || old) write(K_TASKS, S.tasks);
+    return old;
   })();
 
   if (!S.lex || !read(K_SEEDED, false)) {
@@ -768,6 +837,7 @@
     render: render,
     toast: toast,
     closeSheets: closeSheets,
+    backupTip: backupTip,
     lexUpdated: function () { return S.lexUpdated; },
     lexDirty: function () { return !!S.lexDirty; },
     setLex: function (tokens, at) {
@@ -801,6 +871,11 @@
   render();
   updatePredict();
   maybeIosTip();
+  if (purgedCount) toast(purgedCount + " જૂનાં પૂર્ણ ટાસ્ક આપમેળે કાઢ્યાં (" + KEEP_DONE_DAYS + " દિવસથી જૂનાં)");
+
+  // sync.js calls backupTip() with the real sync state; if it never loads,
+  // fall back to treating sync as off so the reminder still appears.
+  window.addEventListener("load", function () { backupTip(false); });
 
   // Re-render if the app is left open past midnight, so "આજે" stays true.
   var bootDay = todayStr();

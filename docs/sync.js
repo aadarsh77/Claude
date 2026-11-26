@@ -389,5 +389,7 @@
   });
   window.addEventListener("online", function () { sync("online"); });
 
+  if (KMX.backupTip) KMX.backupTip(ENABLED && !!sess);
+
   if (ENABLED && sess) sync("load");
 })();

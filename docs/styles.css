@@ -197,11 +197,19 @@ input{font:inherit;color:inherit}
   .quad.isempty{opacity:.72}
 }
 
-.iostip{
-  display:flex;gap:10px;align-items:flex-start;
+.tipbar{
+  display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;
   background:var(--accent-soft);border:1px solid var(--accent);border-radius:12px;
   padding:11px 13px;margin-bottom:14px;font-size:.82rem;color:var(--ink);line-height:1.5;
 }
+.tipbar span{flex:1 1 180px;min-width:0}
+.tipbar .dismiss{flex:none;border:0;background:transparent;color:var(--ink-soft);font-size:1.05rem;padding:0 4px;line-height:1.4}
+.tipbar .act{
+  flex:none;border:1px solid var(--accent);background:var(--accent);color:#fff;
+  border-radius:999px;padding:6px 13px;font-size:.78rem;font-weight:600;
+}
+.tipbar.backup{background:var(--deleg-bg);border-color:var(--deleg)}
+.tipbar.backup .act{background:var(--deleg);border-color:var(--deleg)}
 .iostip button{flex:none;border:0;background:transparent;color:var(--ink-soft);font-size:1rem;padding:0 2px;line-height:1}
 
 /* ---------- task card ---------- */
