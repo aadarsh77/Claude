@@ -84,7 +84,13 @@
       <input type="date" id="ddate" aria-label="તારીખ">
       <input type="text" class="who" id="who" placeholder="કોને સોંપ્યું?" autocomplete="off" aria-label="કોને સોંપ્યું">
     </div>
-    <div class="predict" id="predict"><span class="why">લખવાનું શરૂ કરો — એપ જાતે ખાનું નક્કી કરશે.</span></div>
+    <div class="meta pick">
+      <span class="picklabel">ખાનું જાતે:</span>
+      <button class="chip pickchip" id="pickimp" aria-pressed="false">ઇમ્પોર્ટન્ટ</button>
+      <button class="chip pickchip" id="pickurg" aria-pressed="false">અર્જન્ટ</button>
+      <button class="chip pickauto" id="pickauto" hidden>આપમેળે</button>
+    </div>
+    <div class="predict" id="predict"><span class="why">ટાસ્ક લખો, અથવા ઉપરનાં બે બટનથી ખાનું જાતે પસંદ કરો.</span></div>
     <div class="meta tpl" id="templates" hidden></div>
   </section>
 
@@ -103,7 +109,9 @@
   <p class="note">
     <b>તાકીદ</b> તારીખથી નક્કી થાય: આજ/કાલ/વીતેલી = તાકીદનું, ૪+ દિવસ = નહીં. તારીખ ન હોય તો લખાણમાંનો સમય-શબ્દ જુએ.
     <b>મહત્ત્વ</b> તમારા શબ્દો પરથી શીખે — શરૂઆતની શીખ તમારી નોટબુકનાં ૧૭–૨૨ સપ્ટેમ્બરનાં મેટ્રિક્સ પાનાંમાંથી.
+    કોઈ શબ્દ <b>ઓછામાં ઓછો બે વાર</b> જોયેલો ન હોય ત્યાં સુધી એ નિર્ણય લેતો નથી, એટલે એક સુધારો આખી શીખ ફેરવી ન નાખે.
     પુરાવો ન હોય તો ડિફૉલ્ટ <b>Schedule</b>, જેથી કોઈ ટાસ્ક ચૂપચાપ કાઢી ન નખાય.
+    <b>તમારી પસંદગી હંમેશાં ઉપર</b> — ઉમેરતી વખતે કે કાર્ડ પર જે જાતે નક્કી કરો એના પર ✓ દેખાય અને એપ એને કદી બદલતી નથી.
     બધો ડેટા આ ફોનમાં જ રહે છે — કોઈ સર્વર પર જતો નથી.
   </p>
 </main>

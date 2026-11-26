@@ -298,3 +298,11 @@ input{font:inherit;color:inherit}
 }
 #syncsheet .row{text-align:center;font-weight:600;color:var(--accent)}
 #syncsheet .row.danger{color:var(--do);font-weight:400}
+
+/* ---------- pick the quadrant by hand ---------- */
+.pick{border-top:1px dashed var(--rule);padding-top:10px}
+.picklabel{font-size:.74rem;color:var(--ink-faint);align-self:center;flex:none}
+.pickchip[data-manual="1"]::before{content:"\2713 ";font-weight:700}
+.pickauto{border-style:dashed;color:var(--ink-faint)}
+.mini.pinned{min-width:54px}
+.mini.pinned::before{content:"\2713";margin-inline-end:3px;font-weight:700}

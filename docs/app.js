@@ -182,6 +182,11 @@
     return best;
   }
 
+  // A word seen once scores log(1.5/0.5) = 1.10, far above the 0.15 that
+  // settles a task, so one sighting used to decide on its own. Two agreeing
+  // observations are now required before a word counts at all.
+  var MIN_OBS = 2;
+
   function evidence(toks, kA, kB) {
     var seen = {}, s = 0, hits = [];
     for (var i = 0; i < toks.length; i++) {
@@ -191,7 +196,7 @@
       var e = lookup(t);
       if (!e) continue;
       var a = e[kA] || 0, b = e[kB] || 0;
-      if (a + b === 0) continue;
+      if (a + b < MIN_OBS) continue;
       var w = Math.log((a + 0.5) / (b + 0.5));
       if (Math.abs(w) < 0.15) continue;
       s += w;
@@ -332,8 +337,10 @@
         '<div class="why">' + esc(c.why) + "</div>" +
       "</div>" +
       '<div class="tacts">' +
-        '<button class="mini" data-act="imp" aria-pressed="' + (c.important ? "true" : "false") + '">Imp</button>' +
-        '<button class="mini" data-act="urg" aria-pressed="' + (c.urgent ? "true" : "false") + '">Urg</button>' +
+        '<button class="mini' + ((t.fixI === true || t.fixI === false) ? " pinned" : "") +
+          '" data-act="imp" aria-pressed="' + (c.important ? "true" : "false") + '">Imp</button>' +
+        '<button class="mini' + ((t.fixU === true || t.fixU === false) ? " pinned" : "") +
+          '" data-act="urg" aria-pressed="' + (c.urgent ? "true" : "false") + '">Urg</button>' +
         '<button class="mini x" data-act="del" aria-label="કાઢી નાખો">✕</button>' +
       "</div></li>";
   }
@@ -439,16 +446,47 @@
     var want = shiftDay(days);
     if ($("ddate").value === want) setDue(null, null); else setDue(want, id);
   }
+  // What the next task will be, with whatever the owner has pinned by hand.
+  // pin.i / pin.u are null while the guess stands, true/false once chosen.
+  var pin = { i:null, u:null };
+
+  function currentClass() {
+    return classify({
+      text: $("text").value.trim(),
+      who: $("who").value.trim(),
+      due: $("ddate").value || null,
+      fixU: pin.u, fixI: pin.i
+    }, todayStr());
+  }
+
+  function togglePin(axis) {
+    var c = currentClass();
+    if (axis === "i") pin.i = !c.important; else pin.u = !c.urgent;
+    updatePredict();
+  }
+
+  function clearPins() {
+    pin.i = null; pin.u = null;
+    updatePredict();
+  }
+
   function updatePredict() {
     var text = $("text").value.trim(), box = $("predict");
+    var c = currentClass();
+    var q = QBY[c.quad];
+
+    var pi = $("pickimp"), pu = $("pickurg"), pa = $("pickauto");
+    pi.setAttribute("aria-pressed", c.important ? "true" : "false");
+    pu.setAttribute("aria-pressed", c.urgent ? "true" : "false");
+    if (pin.i === null) pi.removeAttribute("data-manual"); else pi.setAttribute("data-manual", "1");
+    if (pin.u === null) pu.removeAttribute("data-manual"); else pu.setAttribute("data-manual", "1");
+    pa.hidden = (pin.i === null && pin.u === null);
+
+    $("addbtn").disabled = !text;
     if (!text) {
-      box.innerHTML = '<span class="why">લખવાનું શરૂ કરો — એપ જાતે ખાનું નક્કી કરશે.</span>';
-      $("addbtn").disabled = true;
+      box.innerHTML = '<span class="why">ટાસ્ક લખો, અથવા ઉપરનાં બે બટનથી ખાનું જાતે પસંદ કરો.</span>';
       return;
     }
-    $("addbtn").disabled = false;
-    var c = classify({ text:text, who:$("who").value.trim(), due:$("ddate").value || null, fixU:null, fixI:null }, todayStr());
-    var q = QBY[c.quad];
     box.innerHTML = '<span class="tag" style="background:' + q.bg + ';color:' + q.c + ';font-weight:700">' +
       esc(q.en) + " · " + esc(q.gu) + '</span><span class="why">' + esc(c.why) + "</span>";
   }
@@ -461,12 +499,18 @@
       due: $("ddate").value || null,
       created: new Date().toISOString(),
       done: false, doneAt: null,
-      fixU: null, fixI: null, trainedU: null, trainedI: null,
+      fixU: pin.u, fixI: pin.i, trainedU: null, trainedI: null,
       deleted: false, updated: new Date().toISOString(), dirty: true
     };
+    // A hand-picked quadrant is supervision, so it teaches the vocabulary the
+    // same way a correction on an existing card does.
+    if (pin.i !== null || pin.u !== null) train(t);
     S.tasks[t.id] = t;
     saveTasks();
     $("text").value = ""; $("who").value = "";
+    // Clear the pins BEFORE setDue, which repaints the picker: otherwise the
+    // chips keep the last choice and silently apply it to the next task.
+    pin.i = null; pin.u = null;
     setDue(null, null);
     render();
     toast("ઉમેરાયું → " + QBY[classify(t, todayStr()).quad].gu);
@@ -603,6 +647,9 @@
   $("ddate").addEventListener("change", function () { setDue($("ddate").value, null); });
   $("text").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); addTask(); } });
   $("addbtn").addEventListener("click", addTask);
+  $("pickimp").addEventListener("click", function () { togglePin("i"); });
+  $("pickurg").addEventListener("click", function () { togglePin("u"); });
+  $("pickauto").addEventListener("click", clearPins);
   $("dtoday").addEventListener("click", function () { toggleDue(0, "dtoday"); });
   $("dtom").addEventListener("click", function () { toggleDue(1, "dtom"); });
   $("dweek").addEventListener("click", function () { toggleDue(6, "dweek"); });
