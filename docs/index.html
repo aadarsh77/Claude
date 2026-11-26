@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="gu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>કાર્ય મેટ્રિક્સ</title>
+<meta name="description" content="રોજના ટાસ્ક ઉમેરો; તારીખ અને શીખેલા શબ્દો પરથી Eisenhower મેટ્રિક્સમાં જાતે ગોઠવાય.">
+<meta name="theme-color" content="#f6f4ef" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14161b" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="કાર્ય મેટ્રિક્સ">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+
+<header class="bar">
+  <div class="barrow">
+    <div class="brand">
+      <h1>કાર્ય મેટ્રિક્સ</h1>
+      <p id="subline">—</p>
+    </div>
+    <div class="barbtns">
+      <button class="icon" id="installbtn" hidden title="ઇન્સ્ટૉલ કરો" aria-label="ઇન્સ્ટૉલ કરો">⤓</button>
+      <button class="icon" id="themebtn" title="થીમ" aria-label="થીમ બદલો">◐</button>
+      <button class="icon" id="menubtn" title="વધુ" aria-label="વધુ વિકલ્પો" aria-expanded="false">⋯</button>
+    </div>
+  </div>
+  <div class="seg" role="group" aria-label="ફિલ્ટર">
+    <button id="fopen" aria-pressed="true">બાકી</button>
+    <button id="ftoday" aria-pressed="false">આજે</button>
+    <button id="fdone" aria-pressed="false">પૂર્ણ</button>
+    <button id="flist" aria-pressed="false">યાદી</button>
+  </div>
+</header>
+
+<div class="sheet" id="menu" hidden>
+  <button class="row" data-m="copy">આજની યાદી કોપી કરો</button>
+  <button class="row" data-m="export">બૅકઅપ ફાઇલ ઉતારો (.json)</button>
+  <button class="row" data-m="import">બૅકઅપ ફાઇલ ચઢાવો</button>
+  <button class="row" data-m="learn">એપ શું શીખી છે</button>
+  <button class="row danger" data-m="clearDone">પૂર્ણ થયેલાં બધાં કાઢી નાખો</button>
+  <input type="file" id="importfile" accept="application/json,.json" hidden>
+</div>
+
+<main class="wrap">
+
+  <section class="compose">
+    <div class="cline">
+      <input id="text" type="text" enterkeyhint="done" autocomplete="off" autocapitalize="sentences"
+             placeholder="ટાસ્ક લખો…">
+      <button class="add" id="addbtn" disabled aria-label="ઉમેરો">＋</button>
+    </div>
+    <div class="meta">
+      <button class="chip" id="dtoday" aria-pressed="false">આજે</button>
+      <button class="chip" id="dtom" aria-pressed="false">કાલે</button>
+      <button class="chip" id="dweek" aria-pressed="false">અઠવાડિયે</button>
+      <input type="date" id="ddate" aria-label="તારીખ">
+      <input type="text" class="who" id="who" placeholder="કોને સોંપ્યું?" autocomplete="off" aria-label="કોને સોંપ્યું">
+    </div>
+    <div class="predict" id="predict"><span class="why">લખવાનું શરૂ કરો — એપ જાતે ખાનું નક્કી કરશે.</span></div>
+    <div class="meta tpl" id="templates" hidden></div>
+  </section>
+
+  <div class="axis" aria-hidden="true"><span></span><span>Urgent · તાકીદનું</span><span>Not urgent</span></div>
+  <div class="matrix" id="matrix"></div>
+  <div class="listview" id="listview" hidden></div>
+
+  <details class="learn" id="learn">
+    <summary>એપ શું શીખી છે <span id="lcount"></span></summary>
+    <div class="learnbody">
+      <p>કાર્ડ પરનું <b>Imp</b> કે <b>Urg</b> બટન દબાવો એટલે એ ટાસ્કના શબ્દો અહીં નોંધાય. ખોટું શીખ્યું હોય તો શબ્દ પરના × થી ભુલાવી દો.</p>
+      <div class="words" id="words"></div>
+    </div>
+  </details>
+
+  <p class="note">
+    <b>તાકીદ</b> તારીખથી નક્કી થાય: આજ/કાલ/વીતેલી = તાકીદનું, ૪+ દિવસ = નહીં. તારીખ ન હોય તો લખાણમાંનો સમય-શબ્દ જુએ.
+    <b>મહત્ત્વ</b> તમારા શબ્દો પરથી શીખે — શરૂઆતની શીખ તમારી નોટબુકનાં ૧૭–૨૨ સપ્ટેમ્બરનાં મેટ્રિક્સ પાનાંમાંથી.
+    પુરાવો ન હોય તો ડિફૉલ્ટ <b>Schedule</b>, જેથી કોઈ ટાસ્ક ચૂપચાપ કાઢી ન નખાય.
+    બધો ડેટા આ ફોનમાં જ રહે છે — કોઈ સર્વર પર જતો નથી.
+  </p>
+</main>
+
+<script src="./app.js"></script>
+</body>
+</html>
