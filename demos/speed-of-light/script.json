@@ -1,0 +1,30 @@
+{
+  "title": "Looking Back",
+  "look": "blueprint",
+  "facts": {
+    "speed": "299,792.458 km/s in vacuum (exact, by SI definition of the metre).",
+    "earth": "Equatorial circumference 40,075 km; 299,792 / 40,075 = 7.48 laps per second.",
+    "sun": "Mean Sun-Earth distance 149.6 million km; 149.6e6 / 299,792 = 499 s = 8 min 19 s.",
+    "proxima": "Proxima Centauri, nearest star after the Sun, is 4.24 light-years away."
+  },
+  "lines": [
+    {"id": "open",    "hero": "title",   "typed": "LIGHT",
+     "text": "Light is the fastest thing in the universe.",
+     "spoken": "Light is the fastest thing in the universe."},
+    {"id": "speed",   "hero": "counter", "typed": "299,792 KM/S",
+     "text": "It covers about 300,000 kilometres every second.",
+     "spoken": "It covers about three hundred thousand kilometres every second."},
+    {"id": "earth",   "hero": "earth",   "typed": "7.5x",
+     "text": "Fast enough to circle the Earth seven and a half times.",
+     "spoken": "Fast enough to circle the Earth seven and a half times."},
+    {"id": "sun",     "hero": "sun",     "typed": "8 MIN",
+     "text": "Yet sunlight still needs eight minutes to reach us.",
+     "spoken": "Yet sunlight still needs eight minutes to reach us."},
+    {"id": "proxima", "hero": "proxima", "typed": "4.2 YEARS",
+     "text": "Light from the nearest other star takes over four years.",
+     "spoken": "Light from the nearest other star takes over four years."},
+    {"id": "past",    "hero": "all",     "typed": "THE PAST",
+     "text": "So every time you look up, you are seeing the past.",
+     "spoken": "So every time you look up, you are seeing the past."}
+  ]
+}
