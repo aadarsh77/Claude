@@ -1,0 +1,24 @@
+1
+00:00:00,800 --> 00:00:03,856
+Light is the fastest thing in the universe.
+
+2
+00:00:04,006 --> 00:00:08,695
+It covers about 300,000 kilometres every second.
+
+3
+00:00:08,845 --> 00:00:13,255
+Fast enough to circle the Earth seven and a half times.
+
+4
+00:00:13,405 --> 00:00:17,271
+Yet sunlight still needs eight minutes to reach us.
+
+5
+00:00:17,421 --> 00:00:21,700
+Light from the nearest other star takes over four years.
+
+6
+00:00:21,850 --> 00:00:25,933
+So every time you look up, you are seeing the past.
+
